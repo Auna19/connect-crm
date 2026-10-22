@@ -219,3 +219,21 @@ Available Scenarios:
 - `calendar_conflict`
 - `invalid_webhook_signature`
 - `connection_refused`
+
+---
+
+## 7. Model Context Protocol (MCP) Server
+
+ConnectCRM provides a native **Model Context Protocol (MCP)** endpoint conforming to the standard specification for AI Agents and Voice Bot assistants.
+
+### Endpoint:
+- **URL**: `POST /api/mcp` (or `GET /api/mcp` for discovery)
+- **Header**: `Authorization: Bearer mcp_live_token_77819230491823901connectcrm`
+
+### Available MCP Tools:
+1. `read_contact`: Look up customer by phone/email with verification check.
+2. `read_orders`: Fetch order details by public order number.
+3. `track_order`: Normalized tracking with live status (`Shipped`, `Processing`, etc.) and estimated delivery dates.
+4. `push_lead`: Save lead name, phone, email, and qualification notes at the end of a call.
+5. `log_call_data`: Record call summary, transcript, and outcome directly into the Helpdesk queue.
+6. `check_availability`: Real-time calendar availability and double-booking conflict prevention.
