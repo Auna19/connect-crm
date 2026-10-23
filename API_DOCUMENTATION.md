@@ -232,8 +232,9 @@ ConnectCRM provides a native **Model Context Protocol (MCP)** endpoint conformin
 
 ### Available MCP Tools:
 1. `read_contact`: Look up customer by phone/email with verification check.
-2. `read_orders`: Fetch order details by public order number.
-3. `track_order`: Normalized tracking with live status (`Shipped`, `Processing`, etc.) and estimated delivery dates.
-4. `push_lead`: Save lead name, phone, email, and qualification notes at the end of a call.
-5. `log_call_data`: Record call summary, transcript, and outcome directly into the Helpdesk queue.
-6. `check_availability`: Real-time calendar availability and double-booking conflict prevention.
+2. `push_lead`: Save lead name, phone, email, and qualification notes at the end of a call.
+3. `read_orders`: Fetch order details by public order number.
+4. `track_order`: Normalized tracking with live status (`Shipped`, `Processing`, etc.) and estimated delivery dates.
+5. `create_ticket`: Create a new support ticket in the ConnectCRM Helpdesk with priority, subject, description, and order number.
+6. `read_ticket`: Look up support ticket status, assigned agent, and resolution notes by reference number (e.g. `TICK-1001`).
+7. `log_call_data`: Record call summary, transcript, and outcome directly into the Helpdesk queue with automatic SMS notification.

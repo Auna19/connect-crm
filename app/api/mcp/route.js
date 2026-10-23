@@ -5,7 +5,8 @@ import {
   normalizeOrderNumber, 
   createCustomer, 
   createTicket, 
-  getAppointments,
+  getTickets,
+  getTicketById,
   addExecutionLog, 
   addAuditLog 
 } from '@/lib/db';
@@ -28,6 +29,21 @@ const MCP_TOOLS = [
         phone: { type: 'string', description: 'Caller or customer phone number (e.g., +1 (555) 234-5678)' },
         email: { type: 'string', description: 'Customer email address' }
       }
+    }
+  },
+  {
+    name: 'push_lead',
+    description: 'Push lead or new customer details to the CRM at the end of a sales or qualification call.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        first_name: { type: 'string', description: 'Lead first name' },
+        last_name: { type: 'string', description: 'Lead last name' },
+        phone: { type: 'string', description: 'Contact phone number' },
+        email: { type: 'string', description: 'Contact email' },
+        notes: { type: 'string', description: 'Call context and lead notes' }
+      },
+      required: ['first_name', 'phone']
     }
   },
   {
@@ -54,18 +70,39 @@ const MCP_TOOLS = [
     }
   },
   {
-    name: 'push_lead',
-    description: 'Push lead or new customer details to the CRM at the end of a sales or qualification call.',
+    name: 'create_ticket',
+    description: 'Create a new customer support ticket in the ConnectCRM unified helpdesk.',
     inputSchema: {
       type: 'object',
       properties: {
-        first_name: { type: 'string', description: 'Lead first name' },
-        last_name: { type: 'string', description: 'Lead last name' },
-        phone: { type: 'string', description: 'Contact phone number' },
-        email: { type: 'string', description: 'Contact email' },
-        notes: { type: 'string', description: 'Call context and lead notes' }
+        caller_phone: { type: 'string', description: 'Caller or customer contact phone number' },
+        email: { type: 'string', description: 'Customer email address (optional)' },
+        order_number: { type: 'string', description: 'Related order number, if applicable (e.g., EB-778213)' },
+        subject: { type: 'string', description: 'Short summary or subject of the support issue' },
+        description: { type: 'string', description: 'Detailed description of the customer request or issue' },
+        priority: { 
+          type: 'string', 
+          enum: ['low', 'medium', 'high', 'urgent'], 
+          description: 'Ticket urgency/priority (default: medium)' 
+        },
+        channel: { 
+          type: 'string', 
+          enum: ['phone', 'email', 'chat', 'web'], 
+          description: 'Intake channel (default: phone)' 
+        }
       },
-      required: ['first_name', 'phone']
+      required: ['subject', 'description']
+    }
+  },
+  {
+    name: 'read_ticket',
+    description: 'Look up an existing support ticket status, assigned agent, and resolution notes by ticket number.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ticketNumber: { type: 'string', description: 'Authoritative ticket number (e.g. TICK-1001)' }
+      },
+      required: ['ticketNumber']
     }
   },
   {
@@ -81,20 +118,6 @@ const MCP_TOOLS = [
         transcript: { type: 'string', description: 'Complete conversation transcript' }
       },
       required: ['caller_phone', 'call_summary']
-    }
-  },
-  {
-    name: 'check_availability',
-    description: 'Check calendar appointment availability for support or consultation.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        date: { type: 'string', description: 'Date in YYYY-MM-DD format (e.g., 2026-10-23)' },
-        startTime: { type: 'string', description: 'Start time UTC (e.g., 14:00)' },
-        endTime: { type: 'string', description: 'End time UTC (e.g., 14:45)' },
-        agent: { type: 'string', description: 'Assigned agent name' }
-      },
-      required: ['date', 'startTime', 'endTime']
     }
   }
 ];
@@ -242,16 +265,55 @@ export async function POST(request) {
           break;
         }
 
-        case 'check_availability': {
-          const appts = getAppointments().filter(a => a.status !== 'cancelled');
-          const start = new Date(`${args.date}T${args.startTime}:00Z`).getTime();
-          const end = new Date(`${args.date}T${args.endTime}:00Z`).getTime();
-          const hasConflict = appts.some(a => {
-            const aStart = new Date(a.startTime).getTime();
-            const aEnd = new Date(a.endTime).getTime();
-            return (start < aEnd && end > aStart);
+        case 'create_ticket': {
+          const ticket = createTicket({
+            callerPhone: args.caller_phone || args.phone,
+            email: args.email,
+            orderNumber: args.order_number || args.orderNumber,
+            subject: args.subject || 'Customer Support Request',
+            description: args.description || '',
+            priority: args.priority || 'medium',
+            channel: args.channel || 'phone',
+            assignedQueue: args.queue || (args.channel === 'phone' ? 'Phone Support L1' : 'General Support')
           });
-          toolResult = { available: !hasConflict, conflict: hasConflict };
+          toolResult = {
+            success: true,
+            ticketNumber: ticket.ticketNumber,
+            ticketId: ticket.id,
+            status: ticket.status,
+            priority: ticket.priority,
+            assignedQueue: ticket.assignedQueue,
+            orderNumber: ticket.orderNumber,
+            callerPhone: ticket.callerPhone,
+            message: `Ticket ${ticket.ticketNumber} created successfully in ConnectCRM Helpdesk`
+          };
+          break;
+        }
+
+        case 'read_ticket': {
+          const tNum = args.ticketNumber || args.ticket_number;
+          const ticket = tNum ? getTicketById(tNum) : null;
+          if (ticket) {
+            toolResult = {
+              found: true,
+              ticketNumber: ticket.ticketNumber,
+              subject: ticket.subject,
+              description: ticket.description,
+              status: ticket.status,
+              priority: ticket.priority,
+              assignedQueue: ticket.assignedQueue,
+              assignedAgent: ticket.assignedAgent,
+              orderNumber: ticket.orderNumber,
+              callerPhone: ticket.callerPhone,
+              createdAt: ticket.createdAt,
+              resolutionNotes: ticket.resolutionNotes || 'In progress'
+            };
+          } else {
+            toolResult = {
+              found: false,
+              message: `No ticket found with reference "${tNum}".`
+            };
+          }
           break;
         }
 
