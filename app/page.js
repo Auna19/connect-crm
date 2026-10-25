@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Sidebar, { NAV_ITEMS } from '@/components/Sidebar';
 import Header from '@/components/Header';
+import LandingPage from '@/components/LandingPage';
 import OverviewTab from '@/components/OverviewTab';
 import CustomersTab from '@/components/CustomersTab';
 import OrdersTab from '@/components/OrdersTab';
@@ -15,15 +17,62 @@ import TestLabTab from '@/components/TestLabTab';
 import LogsTab from '@/components/LogsTab';
 import SecurityTab from '@/components/SecurityTab';
 import SettingsTab from '@/components/SettingsTab';
+import ProfileTab from '@/components/ProfileTab';
 import { ShieldAlert, CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
 export default function Home() {
+  const router = useRouter();
+  const [currentView, setCurrentView] = useState('landing'); // 'landing' | 'dashboard'
   const [activeTab, setActiveTab] = useState('overview');
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState('qa'); // 'qa', 'admin', 'agent', 'auditor'
+  const [currentUser, setCurrentUser] = useState(null);
   const [stats, setStats] = useState(null);
   const [isResetting, setIsResetting] = useState(false);
   const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('connectcrm_user');
+      let authedUser = null;
+
+      if (stored) {
+        try {
+          authedUser = JSON.parse(stored);
+          setCurrentUser(authedUser);
+          if (authedUser.role) {
+            setCurrentRole(authedUser.role);
+          }
+        } catch (e) {
+          console.error('Invalid user in localStorage', e);
+        }
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const roleParam = params.get('role');
+      const viewParam = params.get('view');
+      const tabParam = params.get('tab');
+
+      // Requirement: User MUST sign up or sign in before accessing the dashboard
+      if (viewParam === 'dashboard' || tabParam) {
+        if (!authedUser) {
+          // Unauthenticated user attempting to enter dashboard -> gate access and route to sign up
+          router.push('/login?mode=signup');
+          return;
+        }
+        setCurrentView('dashboard');
+      }
+
+      if (roleParam && ['qa', 'admin', 'agent', 'auditor'].includes(roleParam)) {
+        setCurrentRole(roleParam);
+      }
+
+      if (tabParam && NAV_ITEMS.some(n => n.id === tabParam)) {
+        setActiveTab(tabParam);
+      }
+    }
+  }, [router]);
 
   const fetchStats = async () => {
     try {
@@ -38,8 +87,10 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    if (currentView === 'dashboard') {
+      fetchStats();
+    }
+  }, [currentView]);
 
   const showToast = (message, type = 'info') => {
     setToast({ message, type });
@@ -48,13 +99,32 @@ export default function Home() {
     }, 4000);
   };
 
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('connectcrm_user');
+    }
+    setCurrentUser(null);
+    setCurrentView('landing');
+    showToast('You have been securely logged out.', 'info');
+  };
+
+  const handleUpdateUser = (updated) => {
+    setCurrentUser(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('connectcrm_user', JSON.stringify(updated));
+    }
+    if (updated.role) {
+      setCurrentRole(updated.role);
+    }
+  };
+
   const handleResetDatabase = async () => {
     setIsResetting(true);
     try {
       const res = await fetch('/api/test-lab/reset', { method: 'POST' });
       const data = await res.json();
       if (data.success) {
-        showToast('Demo records and test cases reset to initial state!', 'success');
+        showToast('Demo records and test cases restored to initial state!', 'success');
         fetchStats();
       } else {
         showToast(data.error || 'Failed to reset database', 'error');
@@ -66,21 +136,41 @@ export default function Home() {
     }
   };
 
+  // If in landing view, render the comprehensive landing page
+  if (currentView === 'landing') {
+    return (
+      <LandingPage 
+        onLaunchDashboard={() => {
+          if (!currentUser) {
+            router.push('/login?mode=signup');
+          } else {
+            setCurrentView('dashboard');
+          }
+        }} 
+      />
+    );
+  }
+
   const currentTabObj = NAV_ITEMS.find((item) => item.id === activeTab) || NAV_ITEMS[0];
 
   // RBAC Access Rule: Support Agent cannot access Connectors or Test Lab. Auditor can only access Logs and Overview.
   const isTabRestricted = 
     (currentRole === 'agent' && ['connectors', 'testlab', 'webhooks'].includes(activeTab)) ||
-    (currentRole === 'auditor' && !['overview', 'logs', 'security'].includes(activeTab));
+    (currentRole === 'auditor' && !['overview', 'logs', 'security', 'profile'].includes(activeTab));
 
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden text-slate-900 font-sans">
-      {/* Collapsible Left Navigation */}
+      {/* Collapsible Left Navigation with Mobile Drawer */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         collapsed={collapsed}
         setCollapsed={setCollapsed}
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
+        onOpenLandingPage={() => setCurrentView('landing')}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Area */}
@@ -92,10 +182,15 @@ export default function Home() {
           onResetDatabase={handleResetDatabase}
           activeTabTitle={currentTabObj.label}
           isResetting={isResetting}
+          onToggleMobileMenu={() => setMobileOpen(!mobileOpen)}
+          onOpenLandingPage={() => setCurrentView('landing')}
+          currentUser={currentUser}
+          onOpenProfile={() => setActiveTab('profile')}
+          onLogout={handleLogout}
         />
 
         {/* Dynamic Body Content */}
-        <main className="flex-1 overflow-y-auto p-6 bg-slate-50/70">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 bg-slate-50/70">
           <div className="max-w-7xl mx-auto space-y-6">
             {isTabRestricted ? (
               <div className="bg-white rounded-xl border border-rose-200 p-8 text-center space-y-3 shadow-xs">
@@ -169,6 +264,14 @@ export default function Home() {
                     onResetDatabase={handleResetDatabase} 
                     isResetting={isResetting} 
                     onNotify={showToast} 
+                  />
+                )}
+                {activeTab === 'profile' && (
+                  <ProfileTab
+                    currentUser={currentUser}
+                    onUpdateUser={handleUpdateUser}
+                    onLogout={handleLogout}
+                    showToast={showToast}
                   />
                 )}
               </>

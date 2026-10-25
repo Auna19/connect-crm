@@ -53,3 +53,14 @@ body {
 .animate-pulse-subtle {
   animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* Hide floating Next.js development indicator badges */
+nextjs-portal,
+div[data-nextjs-toast="true"],
+#nextjs-dev-tools-wrapper,
+[data-nextjs-dev-tools],
+next-route-announcer {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

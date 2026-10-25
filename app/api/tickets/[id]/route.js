@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getTicketById, updateTicket, addAuditLog } from '@/lib/db';
+import { getTicketById, updateTicket, deleteTicket, addAuditLog } from '@/lib/db';
 
 export async function GET(request, { params }) {
   try {
@@ -29,3 +29,18 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request, { params }) {
+  try {
+    const { id } = await params;
+    const success = deleteTicket(id);
+    if (!success) {
+      return NextResponse.json({ success: false, error: 'Ticket not found' }, { status: 404 });
+    }
+    addAuditLog('TICKET_DELETED', 'Ticket', id, `Ticket ${id} was deleted`);
+    return NextResponse.json({ success: true, message: `Ticket ${id} removed successfully` });
+  } catch (err) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+

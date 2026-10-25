@@ -1,79 +1,103 @@
 # ConnectCRM — CRM, Integrations & QA Testing Platform
 
-**ConnectCRM** is a modern, responsive, and robust Customer Relationship Management (CRM) platform designed specifically for Quality Assurance (QA) Engineers and developers to test integrations between a CRM, online retail order systems, phone-based telephony support, external APIs, calendar providers, and helpdesk systems.
+**ConnectCRM** is an authoritative, responsive, and robust Customer Relationship Management (CRM) platform designed specifically for Quality Assurance (QA) Engineers, developers, and operations teams to test integrations between a CRM, online retail order systems, phone-based telephony support, external APIs, calendar booking providers, webhook gateways, and helpdesk ticketing systems.
 
-Built entirely in **pure JavaScript** with **Next.js 16 (App Router)**, **React 19**, **Node.js crypto AES-256-GCM**, and a persistent relational database engine.
+Built entirely in **pure JavaScript** with **Next.js 16 (App Router)**, **React 19**, **Tailwind CSS v4**, **Node.js crypto AES-256-GCM**, and a persistent relational database engine.
 
 ---
 
-## 🌟 Key Features
+## 🌟 Key Features & Architecture
 
-### 1. Executive Telemetry & Dashboard Overview
-- Real-time aggregated metrics: Total Customers, Total Orders, Orders Awaiting Delivery, Open Tickets, High-Priority Tickets, Upcoming Appointments, Active Integrations, Failed API Calls, API Success Rate (%), and Test Pass Rate (%).
-- Visual distribution charts: Order fulfillment pipeline, Helpdesk tickets by channel (Phone, Web, Email, API), and API status distributions.
-- Real-time audit activity feed and date-range filters.
+### 1. Public Enterprise Landing Page & Gated Access Flow
+- **Interactive Showcase**: Highlights the 8 core platform pillars with live benchmark statistics, feature cards, and architecture trust badges.
+- **Mandatory Authentication Gate**: Visitors must register or log in before accessing the operational CRM dashboard.
+- **Header CTAs**:
+  - **Sign In**: Directs to `/login?mode=signin` with clean, un-cached input fields.
+  - **Launch Platform**: Directs directly to the account creation form (`/login?mode=signup`).
+  - Unauthorized direct requests to `/?view=dashboard` are automatically intercepted and routed to Sign Up.
 
-### 2. Customer Management & Telephony Match (TC-P21-006)
-- Complete customer profiles (Customer ID, Name, Email, Primary/Alt Phone, Address, Verification Status, Internal Notes).
-- **Inbound Caller Telephony Tester**:
-  - Normalizes phone numbers (e.g. `+1 (555) 234-5678`).
-  - Distinguishes known from unknown callers.
-  - **Security Rule**: For unverified callers, private account details are strictly locked until verified by order number or email.
-  - Zero cross-customer data leakage.
+### 2. Neumorphic 3D Flip Card Auth & OTP Password Recovery
+- **3D Card Flip Mechanism**: Smooth animation seamlessly toggling between Sign In and Sign Up views.
+- **Input Data Cleanliness**: Form fields (`loginEmail`, `loginPassword`, etc.) are reset on mount, panel switching, and logout, preventing credential leakage.
+- **Accessible Forgot Password Flow**:
+  - **Unregistered Email Handling**: If an unregistered email is submitted, the system returns a validation error: `"User not found, please sign up."` with a one-click CTA to open the Sign Up form.
+  - **6-Digit OTP Generation**: Registered emails receive a cryptographically generated 6-digit OTP (displayed in an on-screen callout for testing) valid for 10 minutes.
+  - **OTP Verification & Password Reset**: Users enter the OTP code and new password; upon verification, the password is updated and the view redirects to Sign In.
+  - **Navigation Back Buttons**: Accessible `"Back to Sign In"` buttons are present across both Forgot Password and OTP verification views.
 
-### 3. Retail Order Tracking & Resilience Engine (TC-P21-007)
-- Authoritative order records including order items, carrier, tracking number, delivery status, and estimated delivery dates.
-- **Natural Speech Normalization**: Queries like `"Where my order EB 7 7 8 2 1 3 dey?"` are automatically normalized into `EB-778213`.
-- **Honest Not-Found**: Non-existent orders (e.g. `EB-000001`) return an honest HTTP 404 without data fabrication.
-- **Timeout Simulation & Incident Recovery**: When a timeout (HTTP 504) is simulated, the system issues a polite failure message, logs an incident, creates **exactly one support ticket**, offers an agent callback, and prevents duplicate tickets on retry.
+### 3. Active Data Shield & Deletion Controls (8 Modules)
+- **Zero Accidental Resets**: Utilizes dual-file atomic writing (`.data/db.json` and `.data/db.backup.json`) with retry guards against file-locking collisions. Added records remain persistent until explicitly deleted.
+- **Status Indicator**: Data Shield badge updated to **"Active"** with real-time green heartbeat pulsing.
+- **Dedicated Delete Actions**: Call-to-action delete buttons with confirmation modals are available across all 8 features:
+  1. **Customer**: Row `Trash2` action + 360° modal delete CTA (`DELETE /api/customers/[id]`).
+  2. **Order**: Dedicated "Actions" column with delete confirmation (`DELETE /api/orders/[orderNumber]`).
+  3. **Helpdesk & Tickets**: Row delete button + ticket detail drawer CTA (`DELETE /api/tickets/[id]`).
+  4. **Calendar & Appointments**: Card-level cancellation and delete CTA (`DELETE /api/appointments/[id]`).
+  5. **Integrations & Connectors**: Header card delete CTA with confirmation (`DELETE /api/connectors/[id]`).
+  6. **Webhooks**: Endpoint delete buttons, per-delivery log deletion, and "Clear History" CTA (`DELETE /api/webhooks/[id]`, `DELETE /api/webhooks/deliveries`).
+  7. **Integration Test Lab**: Individual test case reset button, header "Reset All Runs" CTA, and simulation clear output (`DELETE /api/test-cases`).
+  8. **Execution History & Logs**: Per-row delete buttons across Execution, Audit, and SMS log tables plus a bulk "Clear View" CTA (`DELETE /api/logs`).
 
-### 4. Omnichannel Helpdesk & Ticket Management (TC-P21-008)
+### 4. Dedicated User Profile Page & Session Logout
+- **Profile Management** (`My Profile` tab):
+  - Edit Full Name, Phone Number, Department, and Platform Function / Job Title with live persistence via `/api/auth/profile`.
+  - In-app password change form requiring current password verification.
+  - Active Protection panel displaying AES-256-GCM session status and Tier-4 compliance.
+- **Clean Overview Header (Post-Login)**:
+  - Removed public landing page and sign-in links from the dashboard overview.
+  - Replaced with the **Profile Page Icon Button** (displaying user initials and first name) and the **Logout Button**.
+- **Secure Sign Out**: Clears session credentials in `localStorage` and smoothly redirects to the public landing page.
+
+### 5. Telephony Caller Match (TC-P21-006)
+- Normalizes phone numbers using standard E.164 conventions (e.g., `+1 (555) 234-5678`).
+- Distinguishes known from unknown callers with zero cross-customer data leakage.
+- **Security Rule**: For unverified callers, private account details remain locked until verified by order number or email.
+
+### 6. Retail Order Tracking & Resilience Engine (TC-P21-007)
+- Authoritative order tracking with items, courier, tracking numbers, and delivery statuses.
+- **Natural Speech Normalization**: Extracts order numbers from spoken queries (e.g., `"Where my order EB 7 7 8 2 1 3 dey?"` → `EB-778213`).
+- **Honest 404 Response**: Non-existent orders return a clean HTTP 404 without fabricated data.
+- **504 Gateway Timeout Fallback**: Automatically creates exactly one support ticket, logs an incident, and offers a callback without duplicates on retry.
+
+### 7. Omnichannel Helpdesk & Ticket Management (TC-P21-008)
 - Unified queue for Phone, Web, Email, and API tickets.
 - Filter by channel, priority (Urgent, High, Medium, Low), queue, and status.
 - Preserves full conversation audio transcripts and caller numbers.
 - Automated priority rules (damaged items automatically escalate to Urgent).
 - **Simulated SMS Provider**: Dispatches reference ticket numbers to callers, clearly marked as `[SIMULATED SMS]`.
-- Idempotency guards prevent duplicate ticket creation on retries.
 
-### 5. Calendar & Appointment Engine
-- Interactive availability checks and 30/45/60-minute free slot generators.
-- Server-side collision detection strictly prevents double-booking.
-- Adapter support for internal calendar and external providers.
+### 8. Smart Calendar & Double-Booking Prevention
+- Calculates available 30/45/60-minute free consultation slots without overlap.
+- Mathematical collision detection returns HTTP 409 on double-booking attempts.
+- Time-zone aware appointment booking with Zoom/Video meeting links.
 
-### 6. Connector Management & AES-256-GCM Cryptographic Vault
-- Manage external REST connectors with:
-  - Name, Description, Webhook URL, Base API URL, Scopes.
-  - **Secret Header Name** (e.g., `X-API-Key`, `Authorization`).
-  - **Encrypted Secret**: Stored at rest using Node.js `crypto` AES-256-GCM.
-  - **Zero Frontend Plaintext Leakage**: Responses return masked tokens (`••••••••xxxx`).
-- Server-side connection testing and secret rotation.
-- **Least-Privilege Enforcement**: Detects and flags excessive connector scopes.
+### 9. Integrations & AES-256-GCM Connector Vault
+- Store API credentials at rest using Node.js `crypto` AES-256-GCM authenticated cipher.
+- Zero plaintext credential leakage: sensitive keys masked as `••••••••xxxx` in API responses.
+- One-click secret rotation and least-privilege permission audits.
 
-### 7. Inbound & Outbound Webhook Gateway
-- Inbound endpoint with HMAC-SHA256 signature verification and 5-minute replay attack defense.
-- Outbound test dispatcher with signed HMAC headers and latency measurement.
-- Delivery inspection history table.
+### 10. Webhooks Gateway & Replay Defense
+- Outbound event dispatcher signing payloads with HMAC-SHA256 headers.
+- Inbound receiver validating timestamps against a 5-minute replay attack window.
+- Real-time delivery telemetry recording HTTP response codes and latency.
 
-### 8. Interactive API Explorer
-- Interactive HTTP builder supporting GET, POST, PUT, DELETE.
-- Injects stored connector credentials securely on the server without client disclosure.
-- Generates copyable cURL commands with masked token placeholders.
-
-### 9. Dedicated QA Integration Test Lab
-- One-click runner for preconfigured core acceptance tests:
+### 11. Dedicated QA Integration Test Lab
+- Preconfigured core acceptance tests:
   - **TC-P21-006**: Known and Unknown Caller Security
   - **TC-P21-007**: Order Tracking and API Failure Handling
   - **TC-P21-008**: Phone Complaint and Unified Helpdesk
-- **Controlled Fault Injection Simulator**: Injects 11+ controlled scenarios (HTTP 401, 403, 404, 429, 500, 504 timeout, connection refused, malformed JSON, booking conflict, invalid signature).
-- Export complete test report to CSV.
+- **11 Controlled Fault Simulators**: HTTP 401, 403, 404, 429, 500, 504 timeout, connection refused, malformed JSON, booking conflict, and invalid signature.
+- One-click CSV audit report exports.
 
-### 10. Role-Based Access Control (RBAC)
-- 4 Roles:
-  - **Administrator**: Full system access, secret vault control, and global configurations.
-  - **QA Engineer**: Test execution, failure injection, and test data management.
-  - **Support Agent**: Customer CRM, order tracking, and ticket management.
-  - **Auditor**: Read-only access to audit logs and test results.
-- Enforced at the API route level with HTTP 403 responses for restricted actions.
+---
+
+## 📱 Responsiveness & Browser Compatibility
+
+The interface has been verified across viewports and devices:
+- **Mobile (375px – 640px)**: Slide-over navigation drawer with backdrop overlay, compact headers, stacked card layouts, and horizontally scrolling tables (`overflow-x-auto`).
+- **Tablet (640px – 1024px)**: 2-column adaptive grids, touch-friendly action targets, and responsive metric tiles.
+- **Desktop (1024px – 1920px+)**: Multi-column dashboard layouts, collapsible sidebar, and full telemetry charts.
+- **Browser Compatibility**: Fully supported in Chrome, Firefox, Safari, and Edge.
 
 ---
 
@@ -83,9 +107,9 @@ Built entirely in **pure JavaScript** with **Next.js 16 (App Router)**, **React 
 - Node.js v18.0.0 or higher
 - npm v9.0.0 or higher
 
-### Installation & Execution
+### Installation & Running Locally
 
-1. Clone or navigate to the directory:
+1. Navigate to the project directory:
    ```bash
    cd connect-crm
    ```
@@ -113,26 +137,14 @@ Built entirely in **pure JavaScript** with **Next.js 16 (App Router)**, **React 
 
 ---
 
-## 🧪 Running Acceptance Tests
+## 🧪 Default Test Accounts
 
-You can execute the full suite of acceptance tests directly from the UI or via API:
-
-### Via the Web Interface:
-1. In the sidebar, click on **Integration Test Lab**.
-2. Click **Run All Test Cases**.
-3. View the live execution statuses, latency (ms), and click **View Audit Evidence & Payloads** to inspect the evidence.
-
-### Via Command Line / API:
-```bash
-# Execute TC-P21-006 (Caller Security)
-curl -X POST http://localhost:3000/api/test-lab/run -H "Content-Type: application/json" -d '{"testId":"TC-P21-006"}'
-
-# Execute TC-P21-007 (Order Normalization & Timeout Resilience)
-curl -X POST http://localhost:3000/api/test-lab/run -H "Content-Type: application/json" -d '{"testId":"TC-P21-007"}'
-
-# Execute TC-P21-008 (Phone Complaint & Unified Queue)
-curl -X POST http://localhost:3000/api/test-lab/run -H "Content-Type: application/json" -d '{"testId":"TC-P21-008"}'
-```
+| Role | Email | Password | Permissions |
+|---|---|---|---|
+| **Administrator** | `admin@connectcrm.internal` | `Password123!` | Full Access, Secret Vault, System Settings |
+| **QA Engineer** | `qa@connectcrm.internal` | `Password123!` | Integration Test Lab, Fault Injection, All Modules |
+| **Support Agent** | `agent@connectcrm.internal` | `Password123!` | Customers, Orders, Helpdesk Tickets, Calendar |
+| **Auditor** | `auditor@connectcrm.internal` | `Password123!` | Read-Only Audit Telemetry & Execution Logs |
 
 ---
 

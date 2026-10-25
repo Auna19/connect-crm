@@ -17,8 +17,10 @@ import {
   Eye, 
   X,
   Smartphone,
-  CheckCircle2
+  CheckCircle2,
+  Trash2
 } from 'lucide-react';
+
 
 export default function HelpdeskTab({ onNotify }) {
   const [tickets, setTickets] = useState([]);
@@ -122,6 +124,28 @@ export default function HelpdeskTab({ onNotify }) {
       onNotify?.(err.message, 'error');
     }
   };
+
+  const handleDeleteTicket = async (id, ticketNumber) => {
+    if (!window.confirm(`Are you sure you want to delete ticket ${ticketNumber || id}? This will permanently remove the ticket.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/tickets/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        onNotify?.(`Ticket ${ticketNumber || id} deleted successfully`, 'success');
+        if (selectedTicket?.id === id || selectedTicket?.ticketNumber === ticketNumber) {
+          setSelectedTicket(null);
+        }
+        fetchTickets();
+      } else {
+        onNotify?.(data.error || 'Failed to delete ticket', 'error');
+      }
+    } catch (err) {
+      onNotify?.(err.message, 'error');
+    }
+  };
+
 
   const getChannelBadge = (channel) => {
     switch (channel?.toLowerCase()) {
@@ -377,12 +401,21 @@ export default function HelpdeskTab({ onNotify }) {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => setSelectedTicket(t)}
-                        className="text-purple-600 hover:text-purple-800 font-semibold inline-flex items-center gap-1"
-                      >
-                        <Eye size={13} /> Transcript
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setSelectedTicket(t)}
+                          className="text-purple-600 hover:text-purple-800 font-semibold inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-purple-50 transition-colors"
+                        >
+                          <Eye size={13} /> Transcript
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTicket(t.id, t.ticketNumber)}
+                          className="text-rose-600 hover:text-rose-800 font-semibold inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-rose-50 transition-colors"
+                          title="Delete ticket"
+                        >
+                          <Trash2 size={13} /> Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -405,10 +438,20 @@ export default function HelpdeskTab({ onNotify }) {
                 </div>
                 <span className="text-xs text-slate-500">{selectedTicket.subject}</span>
               </div>
-              <button onClick={() => setSelectedTicket(null)} className="text-slate-400 hover:text-slate-600 p-1">
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleDeleteTicket(selectedTicket.id, selectedTicket.ticketNumber)}
+                  className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors"
+                >
+                  <Trash2 size={13} />
+                  <span>Delete</span>
+                </button>
+                <button onClick={() => setSelectedTicket(null)} className="text-slate-400 hover:text-slate-600 p-1">
+                  <X size={20} />
+                </button>
+              </div>
             </div>
+
 
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="p-2.5 bg-slate-50 rounded-lg">

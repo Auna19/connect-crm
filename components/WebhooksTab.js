@@ -11,9 +11,10 @@ import {
   ShieldCheck, 
   Activity, 
   Eye, 
-  X,
-  Copy,
-  Check
+  X, 
+  Copy, 
+  Check,
+  Trash2
 } from 'lucide-react';
 
 export default function WebhooksTab({ onNotify }) {
@@ -25,6 +26,13 @@ export default function WebhooksTab({ onNotify }) {
   const [triggerResult, setTriggerResult] = useState(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [inspectedPayload, setInspectedPayload] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newWebhook, setNewWebhook] = useState({
+    name: '',
+    url: 'https://webhook.site/sample-endpoint',
+    eventTypes: ['order.shipped', 'order.delivered'],
+    environment: 'production'
+  });
 
   const fetchWebhooksData = async () => {
     try {
@@ -84,6 +92,80 @@ export default function WebhooksTab({ onNotify }) {
     }
   };
 
+  const handleCreateWebhook = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/webhooks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newWebhook)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowAddModal(false);
+        fetchWebhooksData();
+        onNotify?.(`Webhook "${data.webhook.name}" registered successfully!`, 'success');
+        setNewWebhook({
+          name: '',
+          url: 'https://webhook.site/sample-endpoint',
+          eventTypes: ['order.shipped', 'order.delivered'],
+          environment: 'production'
+        });
+      } else {
+        onNotify?.(data.error || 'Failed to create webhook', 'error');
+      }
+    } catch (err) {
+      onNotify?.(err.message, 'error');
+    }
+  };
+
+  const handleDeleteWebhook = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete webhook "${name || id}"?`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/webhooks/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        onNotify?.(`Webhook "${name || id}" deleted successfully`, 'success');
+        fetchWebhooksData();
+      } else {
+        onNotify?.(data.error || 'Failed to delete webhook', 'error');
+      }
+    } catch (err) {
+      onNotify?.(err.message, 'error');
+    }
+  };
+
+  const handleDeleteDelivery = async (id) => {
+    try {
+      const res = await fetch(`/api/webhooks/deliveries?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        onNotify?.('Delivery log entry deleted', 'info');
+        fetchWebhooksData();
+      }
+    } catch (err) {
+      onNotify?.(err.message, 'error');
+    }
+  };
+
+  const handleClearDeliveries = async () => {
+    if (!window.confirm('Are you sure you want to clear all webhook delivery history logs?')) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/webhooks/deliveries', { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        onNotify?.('All webhook deliveries cleared', 'success');
+        fetchWebhooksData();
+      }
+    } catch (err) {
+      onNotify?.(err.message, 'error');
+    }
+  };
+
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
     setCopiedUrl(true);
@@ -101,14 +183,9 @@ export default function WebhooksTab({ onNotify }) {
               <Webhook size={20} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-white">Webhook Dispatcher & HMAC-SHA256 Signer</h3>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-mono">
-                  Idempotent Delivery
-                </span>
-              </div>
-              <p className="text-xs text-slate-300">
-                Trigger outbound events with cryptographically signed payloads, delivery retries, and latency tracking.
+              <h3 className="font-bold text-sm tracking-tight">Outbound Webhook Dispatcher & HMAC-SHA256 Signer</h3>
+              <p className="text-xs text-slate-400">
+                Dispatches authoritative payloads to configured subscribers with cryptographic hash validation.
               </p>
             </div>
           </div>
@@ -117,49 +194,100 @@ export default function WebhooksTab({ onNotify }) {
             <select
               value={selectedEventType}
               onChange={(e) => setSelectedEventType(e.target.value)}
-              className="bg-slate-950/60 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono"
+              className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-3 py-1.5 focus:outline-hidden"
             >
               <option value="order.shipped">order.shipped</option>
-              <option value="order.created">order.created</option>
               <option value="order.delivered">order.delivered</option>
               <option value="ticket.created">ticket.created</option>
-              <option value="appointment.created">appointment.created</option>
+              <option value="ticket.escalated">ticket.escalated</option>
+              <option value="customer.verified">customer.verified</option>
             </select>
 
             <button
               onClick={handleTriggerWebhook}
               disabled={isTriggering}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all disabled:opacity-50 shadow-sm shrink-0"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors disabled:opacity-50 shadow-xs"
             >
-              <Send size={13} className={isTriggering ? 'animate-spin' : ''} />
-              <span>{isTriggering ? 'Signing...' : 'Trigger Event'}</span>
+              <Send size={13} className={isTriggering ? 'animate-bounce' : ''} />
+              <span>{isTriggering ? 'Signing & Sending...' : 'Trigger Webhook'}</span>
             </button>
           </div>
         </div>
 
-        {/* Live Trigger Result Box */}
         {triggerResult && (
-          <div className="mt-4 p-4 rounded-lg bg-slate-950/70 border border-emerald-500/30 text-xs text-slate-200 space-y-2">
-            <div className="flex items-center justify-between font-bold">
-              <span className="flex items-center gap-2 text-emerald-400">
-                <CheckCircle2 size={16} />
-                <span>Dispatched Event: {triggerResult.eventType} (HTTP {triggerResult.httpStatus})</span>
+          <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800 text-xs space-y-2 animate-in fade-in">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-emerald-400 font-bold flex items-center gap-1.5">
+                <CheckCircle2 size={14} /> Dispatched: {triggerResult.eventType}
               </span>
-              <span className="font-mono text-[10px] text-slate-400">Latency: {triggerResult.latencyMs}ms</span>
+              <span className="text-[11px] text-slate-400 font-mono">
+                Latency: {triggerResult.latencyMs}ms | Status: HTTP {triggerResult.httpStatus || 200}
+              </span>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] bg-slate-900 p-2.5 rounded border border-slate-800">
-              <div>
-                <span className="text-slate-400 block font-semibold">Destination Endpoint:</span>
-                <span className="font-mono text-white truncate block">{triggerResult.destinationUrl}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block font-semibold">HMAC-SHA256 Signature Header:</span>
-                <span className="font-mono text-emerald-300 truncate block">{triggerResult.signature}</span>
-              </div>
+            <div className="font-mono text-[11px] text-slate-400 bg-slate-900 p-2 rounded border border-slate-800 overflow-x-auto">
+              <span className="text-slate-500 block mb-1">X-Signature-SHA256 Header:</span>
+              <span className="text-indigo-300 break-all">{triggerResult.signature || 'sha256=a7b92f4e8812...'}</span>
             </div>
           </div>
         )}
+      </div>
+
+      {/* Configured Webhooks Management Section */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-slate-800">Registered Webhook Endpoints</h3>
+            <p className="text-xs text-slate-500">Active endpoints listening for platform events and state changes</p>
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors shrink-0"
+          >
+            <Plus size={14} />
+            <span>Add Webhook Endpoint</span>
+          </button>
+        </div>
+
+        <div className="divide-y divide-slate-100">
+          {webhooks.length === 0 ? (
+            <div className="p-6 text-center text-xs text-slate-400">No custom webhook endpoints registered yet.</div>
+          ) : (
+            webhooks.map((wh) => (
+              <div key={wh.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50 transition-colors">
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-xs text-slate-800">{wh.name}</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 uppercase">
+                      {wh.status}
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-600">
+                      {wh.environment}
+                    </span>
+                  </div>
+                  <div className="font-mono text-xs text-slate-500 truncate">{wh.url}</div>
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {wh.eventTypes?.map((ev) => (
+                      <span key={ev} className="text-[10px] font-mono bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">
+                        {ev}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => handleDeleteWebhook(wh.id, wh.name)}
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors"
+                    title="Delete webhook endpoint"
+                  >
+                    <Trash2 size={13} />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Inbound Webhook Receiver Card */}
@@ -185,8 +313,19 @@ export default function WebhooksTab({ onNotify }) {
       {/* Delivery History Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-          <h3 className="font-bold text-sm text-slate-800">Webhook Delivery Log & Payload Inspection</h3>
-          <span className="text-xs text-slate-500">{deliveries.length} total deliveries</span>
+          <div>
+            <h3 className="font-bold text-sm text-slate-800">Webhook Delivery Log & Payload Inspection</h3>
+            <span className="text-xs text-slate-500">{deliveries.length} total deliveries</span>
+          </div>
+          {deliveries.length > 0 && (
+            <button
+              onClick={handleClearDeliveries}
+              className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors"
+            >
+              <Trash2 size={13} />
+              <span>Clear History</span>
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto">
@@ -199,7 +338,7 @@ export default function WebhooksTab({ onNotify }) {
                 <th className="px-4 py-3">HTTP Code</th>
                 <th className="px-4 py-3">Latency</th>
                 <th className="px-4 py-3">Attempts</th>
-                <th className="px-4 py-3 text-right">Payload</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -227,12 +366,21 @@ export default function WebhooksTab({ onNotify }) {
                     <td className="px-4 py-3 font-mono text-slate-600">{del.latencyMs}ms</td>
                     <td className="px-4 py-3 font-mono text-slate-600">{del.attempts}</td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => setInspectedPayload(del)}
-                        className="text-emerald-600 hover:text-emerald-800 font-semibold inline-flex items-center gap-1"
-                      >
-                        <Eye size={13} /> View JSON
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setInspectedPayload(del)}
+                          className="text-emerald-600 hover:text-emerald-800 font-semibold inline-flex items-center gap-1"
+                        >
+                          <Eye size={13} /> View JSON
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDelivery(del.id)}
+                          className="text-rose-600 hover:text-rose-800 p-1 hover:bg-rose-50 rounded"
+                          title="Delete delivery record"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -241,6 +389,73 @@ export default function WebhooksTab({ onNotify }) {
           </table>
         </div>
       </div>
+
+      {/* Register Webhook Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full p-6">
+            <div className="flex items-center justify-between border-b pb-3 mb-4">
+              <h3 className="text-base font-bold text-slate-900">Add Webhook Endpoint</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateWebhook} className="space-y-3 text-xs">
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Endpoint Name *</label>
+                <input
+                  required
+                  type="text"
+                  placeholder="e.g. ERP Order Sync Hook"
+                  value={newWebhook.name}
+                  onChange={(e) => setNewWebhook({ ...newWebhook, name: e.target.value })}
+                  className="w-full border border-slate-300 rounded-lg p-2"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Destination URL *</label>
+                <input
+                  required
+                  type="url"
+                  placeholder="https://..."
+                  value={newWebhook.url}
+                  onChange={(e) => setNewWebhook({ ...newWebhook, url: e.target.value })}
+                  className="w-full border border-slate-300 rounded-lg p-2 font-mono text-[11px]"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Environment</label>
+                <select
+                  value={newWebhook.environment}
+                  onChange={(e) => setNewWebhook({ ...newWebhook, environment: e.target.value })}
+                  className="w-full border border-slate-300 rounded-lg p-2"
+                >
+                  <option value="production">Production</option>
+                  <option value="staging">Staging</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-3 py-1.5 rounded-lg border border-slate-300 font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 rounded-lg bg-blue-600 font-semibold text-white hover:bg-blue-700"
+                >
+                  Register Webhook
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Payload Modal */}
       {inspectedPayload && (

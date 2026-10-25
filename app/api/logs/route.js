@@ -1,5 +1,15 @@
 import { NextResponse } from 'next/server';
-import { getExecutionLogs, getAuditLogs, getSmsDeliveries } from '@/lib/db';
+import { 
+  getExecutionLogs, 
+  getAuditLogs, 
+  getSmsDeliveries,
+  deleteExecutionLog,
+  clearExecutionLogs,
+  deleteAuditLog,
+  clearAuditLogs,
+  deleteSmsDelivery,
+  clearSmsDeliveries
+} from '@/lib/db';
 
 export async function GET(request) {
   try {
@@ -51,3 +61,36 @@ export async function GET(request) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const type = searchParams.get('type') || 'execution';
+    const id = searchParams.get('id');
+
+    if (id) {
+      if (type === 'audit') {
+        deleteAuditLog(id);
+      } else if (type === 'sms') {
+        deleteSmsDelivery(id);
+      } else {
+        deleteExecutionLog(id);
+      }
+      return NextResponse.json({ success: true, message: `Log entry ${id} deleted` });
+    }
+
+    // Clear by type
+    if (type === 'audit') {
+      clearAuditLogs();
+    } else if (type === 'sms') {
+      clearSmsDeliveries();
+    } else {
+      clearExecutionLogs();
+    }
+
+    return NextResponse.json({ success: true, message: `All ${type} logs cleared successfully` });
+  } catch (err) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+

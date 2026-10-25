@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { 
   getOrderByNumber, 
   normalizeOrderNumber, 
+  deleteOrder,
   addExecutionLog, 
   addAuditLog, 
   createTicket 
 } from '@/lib/db';
+
 
 export async function GET(request, { params }) {
   const startTime = Date.now();
@@ -152,3 +154,18 @@ export async function GET(request, { params }) {
     verifiedFromStore: true
   });
 }
+
+export async function DELETE(request, { params }) {
+  try {
+    const { orderNumber: rawParam } = await params;
+    const success = deleteOrder(rawParam);
+    if (!success) {
+      return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
+    }
+    addAuditLog('ORDER_DELETED', 'Order', rawParam, `Order ${rawParam} was deleted`);
+    return NextResponse.json({ success: true, message: `Order ${rawParam} removed successfully` });
+  } catch (err) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+

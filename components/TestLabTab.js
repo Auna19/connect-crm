@@ -17,8 +17,10 @@ import {
   Sliders,
   X,
   RefreshCw,
-  Award
+  Award,
+  Trash2
 } from 'lucide-react';
+
 
 const FAILURE_SCENARIOS = [
   { id: 'auth_failure_401', label: 'HTTP 401 Unauthorized', desc: 'Invalid or missing API Key / Bearer token' },
@@ -111,6 +113,38 @@ export default function TestLabTab({ onNotify, onRefreshStats }) {
     }
   };
 
+  const handleResetTest = async (testId) => {
+    try {
+      const res = await fetch(`/api/test-cases?testId=${testId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        onNotify?.(`Test case ${testId} state reset`, 'info');
+        fetchTestCases();
+        onRefreshStats?.();
+      }
+    } catch (err) {
+      onNotify?.(err.message, 'error');
+    }
+  };
+
+  const handleResetAllTests = async () => {
+    if (!window.confirm('Reset all test execution results back to Not Tested?')) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/test-cases', { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        onNotify?.('All test cases reset to initial state', 'success');
+        fetchTestCases();
+        onRefreshStats?.();
+      }
+    } catch (err) {
+      onNotify?.(err.message, 'error');
+    }
+  };
+
+
   const handleRunSimulation = async () => {
     setIsSimulating(true);
     setSimResult(null);
@@ -193,13 +227,22 @@ export default function TestLabTab({ onNotify, onRefreshStats }) {
         </div>
 
         {/* Global Test Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors shadow-xs"
           >
             <Download size={14} />
             <span>Export CSV Report</span>
+          </button>
+
+          <button
+            onClick={handleResetAllTests}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors shadow-xs"
+            title="Reset all test case execution records"
+          >
+            <RotateCcw size={14} />
+            <span>Reset All Runs</span>
           </button>
 
           <button
@@ -212,6 +255,7 @@ export default function TestLabTab({ onNotify, onRefreshStats }) {
           </button>
         </div>
       </div>
+
 
       {/* Pass Rate Metric Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -272,8 +316,17 @@ export default function TestLabTab({ onNotify, onRefreshStats }) {
                     <h4 className="font-bold text-slate-900 text-sm">{tc.title}</h4>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {getStatusBadge(tc.status)}
+                    {tc.status !== 'Not Tested' && (
+                      <button
+                        onClick={() => handleResetTest(tc.testId)}
+                        className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                        title="Clear execution result"
+                      >
+                        <RotateCcw size={13} />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleRunTest(tc.testId)}
                       disabled={isRunning || isRunningAll}
@@ -284,6 +337,7 @@ export default function TestLabTab({ onNotify, onRefreshStats }) {
                     </button>
                   </div>
                 </div>
+
 
                 {/* Test Metadata & Expected vs Actual */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
@@ -393,10 +447,20 @@ export default function TestLabTab({ onNotify, onRefreshStats }) {
                 <AlertTriangle size={15} />
                 <span>Simulation Result: HTTP {simResult.httpStatus}</span>
               </span>
-              <span className="font-mono text-[10px] text-slate-400">Duration: {simResult.durationMs}ms</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[10px] text-slate-400">Duration: {simResult.durationMs}ms</span>
+                <button
+                  onClick={() => setSimResult(null)}
+                  className="text-slate-400 hover:text-white p-0.5 rounded"
+                  title="Clear simulation result"
+                >
+                  <X size={14} />
+                </button>
+              </div>
             </div>
             <p className="font-mono text-white text-xs">{simResult.error || 'Fault injected and recorded in execution history.'}</p>
           </div>
+
         )}
       </div>
 

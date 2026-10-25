@@ -12,8 +12,10 @@ import {
   MapPin, 
   Search,
   X,
-  CalendarCheck
+  CalendarCheck,
+  Trash2
 } from 'lucide-react';
+
 
 export default function CalendarTab({ onNotify }) {
   const [appointments, setAppointments] = useState([]);
@@ -138,6 +140,25 @@ export default function CalendarTab({ onNotify }) {
       onNotify?.(err.message, 'error');
     }
   };
+
+  const handleDeleteAppointment = async (id, title) => {
+    if (!window.confirm(`Are you sure you want to cancel/delete appointment "${title || id}"?`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/appointments/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        onNotify?.(`Appointment "${title || id}" deleted successfully`, 'success');
+        fetchAppointments();
+      } else {
+        onNotify?.(data.error || 'Failed to delete appointment', 'error');
+      }
+    } catch (err) {
+      onNotify?.(err.message, 'error');
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -332,10 +353,21 @@ export default function CalendarTab({ onNotify }) {
                   )}
                 </div>
 
-                <div className="font-mono text-[10px] text-slate-400 shrink-0">
-                  Ref: {a.externalCalendarEventId || a.id}
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="font-mono text-[10px] text-slate-400">
+                    Ref: {a.externalCalendarEventId || a.id}
+                  </div>
+                  <button
+                    onClick={() => handleDeleteAppointment(a.id, a.title)}
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors"
+                    title="Cancel or delete this appointment"
+                  >
+                    <Trash2 size={13} />
+                    <span>Delete</span>
+                  </button>
                 </div>
               </div>
+
             ))
           )}
         </div>

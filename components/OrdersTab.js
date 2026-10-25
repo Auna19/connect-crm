@@ -13,8 +13,10 @@ import {
   Mic, 
   ShieldAlert,
   ArrowRight,
-  LifeBuoy
+  LifeBuoy,
+  Trash2
 } from 'lucide-react';
+
 
 export default function OrdersTab({ onNotify }) {
   const [orders, setOrders] = useState([]);
@@ -113,6 +115,25 @@ export default function OrdersTab({ onNotify }) {
       onNotify?.(err.message, 'error');
     }
   };
+
+  const handleDeleteOrder = async (orderNumber) => {
+    if (!window.confirm(`Are you sure you want to delete order ${orderNumber}? This will permanently remove the order record.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/orders/${orderNumber}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        onNotify?.(`Order ${orderNumber} deleted successfully`, 'success');
+        fetchOrders();
+      } else {
+        onNotify?.(data.error || 'Failed to delete order', 'error');
+      }
+    } catch (err) {
+      onNotify?.(err.message, 'error');
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -327,16 +348,17 @@ export default function OrdersTab({ onNotify }) {
                 <th className="px-4 py-3">Delivery Status</th>
                 <th className="px-4 py-3">Estimated Delivery</th>
                 <th className="px-4 py-3">Carrier / Tracking</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-8 text-slate-400">Loading orders...</td>
+                  <td colSpan="8" className="text-center py-8 text-slate-400">Loading orders...</td>
                 </tr>
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-8 text-slate-400">No orders match filter.</td>
+                  <td colSpan="8" className="text-center py-8 text-slate-400">No orders match filter.</td>
                 </tr>
               ) : (
                 orders.map((o) => (
@@ -363,11 +385,21 @@ export default function OrdersTab({ onNotify }) {
                     <td className="px-4 py-3 font-mono text-[11px] text-slate-500">
                       {o.carrier} {o.trackingNumber ? `(${o.trackingNumber})` : ''}
                     </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => handleDeleteOrder(o.orderNumber)}
+                        className="text-rose-600 hover:text-rose-800 font-semibold inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-rose-50 transition-colors"
+                        title="Delete order record"
+                      >
+                        <Trash2 size={13} /> Delete
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
+
         </div>
       </div>
 

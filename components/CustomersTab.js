@@ -16,8 +16,10 @@ import {
   ShoppingBag,
   LifeBuoy,
   Calendar,
-  Lock
+  Lock,
+  Trash2
 } from 'lucide-react';
+
 
 export default function CustomersTab({ onNotify }) {
   const [customers, setCustomers] = useState([]);
@@ -131,6 +133,28 @@ export default function CustomersTab({ onNotify }) {
       console.error(err);
     }
   };
+
+  const handleDeleteCustomer = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete customer ${name || id}? This will remove the customer record permanently.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        onNotify?.(`Customer ${name || id} deleted successfully`, 'success');
+        if (selectedCustomer?.customer?.id === id) {
+          setSelectedCustomer(null);
+        }
+        fetchCustomers();
+      } else {
+        onNotify?.(data.error || 'Failed to delete customer', 'error');
+      }
+    } catch (err) {
+      onNotify?.(err.message, 'error');
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -319,12 +343,22 @@ export default function CustomersTab({ onNotify }) {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => viewCustomerDetails(c.id)}
-                        className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1"
-                      >
-                        <Eye size={13} /> View 360°
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => viewCustomerDetails(c.id)}
+                          className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                          title="View 360 customer profile"
+                        >
+                          <Eye size={13} /> View 360°
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCustomer(c.id, `${c.firstName} ${c.lastName}`)}
+                          className="text-rose-600 hover:text-rose-800 font-semibold inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-rose-50 transition-colors"
+                          title="Delete customer record"
+                        >
+                          <Trash2 size={13} /> Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -345,13 +379,23 @@ export default function CustomersTab({ onNotify }) {
                 </h3>
                 <span className="text-xs font-mono text-slate-400">ID: {selectedCustomer.customer.id}</span>
               </div>
-              <button 
-                onClick={() => setSelectedCustomer(null)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleDeleteCustomer(selectedCustomer.customer.id, `${selectedCustomer.customer.firstName} ${selectedCustomer.customer.lastName}`)}
+                  className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors"
+                >
+                  <Trash2 size={13} />
+                  <span>Delete Customer</span>
+                </button>
+                <button 
+                  onClick={() => setSelectedCustomer(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
+
 
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="p-2.5 bg-slate-50 rounded-lg">

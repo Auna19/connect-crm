@@ -15,8 +15,10 @@ import {
   Lock,
   X,
   Radio,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Trash2
 } from 'lucide-react';
+
 
 export default function ConnectorsTab({ onNotify }) {
   const [connectors, setConnectors] = useState([]);
@@ -102,6 +104,25 @@ export default function ConnectorsTab({ onNotify }) {
       setRotatingId(null);
     }
   };
+
+  const handleDeleteConnector = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete connector "${name || id}"? This will revoke connector credentials.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/connectors/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        onNotify?.(`Connector "${name || id}" deleted successfully`, 'success');
+        fetchConnectors();
+      } else {
+        onNotify?.(data.error || 'Failed to delete connector', 'error');
+      }
+    } catch (err) {
+      onNotify?.(err.message, 'error');
+    }
+  };
+
 
   const handleCreateConnector = async (e) => {
     e.preventDefault();
@@ -257,16 +278,27 @@ export default function ConnectorsTab({ onNotify }) {
                 </div>
 
                 {/* Card Actions */}
-                <div className="flex items-center justify-between pt-3 border-t border-slate-100 gap-2">
-                  <button
-                    onClick={() => handleRotateSecret(c.id)}
-                    disabled={rotatingId === c.id}
-                    className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
-                    title="Revoke and generate new AES-256 cipher"
-                  >
-                    <RotateCw size={13} className={rotatingId === c.id ? 'animate-spin' : ''} />
-                    <span>Rotate Secret</span>
-                  </button>
+                <div className="flex flex-wrap items-center justify-between pt-3 border-t border-slate-100 gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleRotateSecret(c.id)}
+                      disabled={rotatingId === c.id}
+                      className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                      title="Revoke and generate new AES-256 cipher"
+                    >
+                      <RotateCw size={13} className={rotatingId === c.id ? 'animate-spin' : ''} />
+                      <span>Rotate Secret</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteConnector(c.id, c.name)}
+                      className="flex items-center gap-1 text-xs font-semibold px-2 py-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors"
+                      title="Delete connector"
+                    >
+                      <Trash2 size={13} />
+                      <span>Delete</span>
+                    </button>
+                  </div>
 
                   <button
                     onClick={() => handleTestConnection(c.id)}
@@ -278,6 +310,7 @@ export default function ConnectorsTab({ onNotify }) {
                   </button>
                 </div>
               </div>
+
             );
           })
         )}
