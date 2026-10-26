@@ -528,11 +528,17 @@ export default function LoginPage() {
                 <h1>Enter OTP Code</h1>
                 <p className="subtitle">Verify code and set your new password</p>
 
-                {/* Live OTP Demo Callout */}
-                {dispatchedOtp && (
+                {/* Live OTP Email / Demo Callout */}
+                {dispatchedOtp ? (
                   <div className="otp-callout-box">
-                    <span>Verification Code sent to {forgotEmail}:</span>
+                    <span>Demo Mode Verification Code:</span>
                     <div className="otp-badge-code">{dispatchedOtp}</div>
+                  </div>
+                ) : (
+                  <div className="otp-callout-box" style={{ background: '#f8fafc', borderColor: '#cbd5e1' }}>
+                    <span style={{ color: '#334155', fontSize: '12px', lineHeight: '1.4' }}>
+                      Verification code sent to <strong>{forgotEmail}</strong>. Check your email inbox (or spam), then copy & paste the 6-digit OTP below:
+                    </span>
                   </div>
                 )}
 

@@ -171,6 +171,25 @@ ConnectCRM features an **intelligent hybrid database layer** ([lib/db.js](file:/
 
 ---
 
+## 📧 Email OTP Delivery (100% Free - Resend)
+
+ConnectCRM delivers password reset OTP verification codes directly to real user inboxes using [Resend](https://resend.com):
+- **Free Tier**: 3,000 emails/month (100 emails/day) with zero credit card required.
+- **Instant Delivery**: Generates a branded, responsive HTML security email with a 6-digit OTP code valid for 10 minutes.
+- **Graceful Fallback**: If `RESEND_API_KEY` is not yet configured, the system falls back to display mode so development is never blocked.
+
+### 2-Minute Resend Setup:
+1. Create a free account at [resend.com](https://resend.com).
+2. Go to **API Keys** -> click **Create API Key** (Permissions: *Full access*).
+3. Copy the key (starts with `re_...`).
+4. In your Vercel Dashboard, go to **Settings** -> **Environment Variables**:
+   - **Key**: `RESEND_API_KEY`
+   - **Value**: `re_your_api_key_here`
+5. *(Optional)* Set `RESEND_FROM_EMAIL="ConnectCRM Security <onboarding@resend.dev>"` (or your verified domain).
+6. Redeploy on Vercel. Any password reset request will now be sent directly to the user's inbox!
+
+---
+
 ## 🔒 Security Architecture
 
 1. **AES-256-GCM Vault**: Credentials are encrypted before saving to `.data/db.json` or Neon PostgreSQL and decrypted only in temporary server memory during an authorized request.
