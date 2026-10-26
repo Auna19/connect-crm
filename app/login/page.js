@@ -55,6 +55,8 @@ export default function LoginPage() {
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [forgotError, setForgotError] = useState('');
   const [dispatchedOtp, setDispatchedOtp] = useState(null);
+  const [otpEmailSent, setOtpEmailSent] = useState(false);
+  const [otpEmailError, setOtpEmailError] = useState(null);
 
   // OTP Verification states
   const [otpCode, setOtpCode] = useState('');
@@ -236,8 +238,10 @@ export default function LoginPage() {
         return;
       }
 
-      setDispatchedOtp(data.otp);
-      triggerToast(`OTP Code sent to ${forgotEmail}`);
+      setDispatchedOtp(data.otp || null);
+      setOtpEmailSent(Boolean(data.emailSent));
+      setOtpEmailError(data.emailError || null);
+      triggerToast(data.message || `Verification processed for ${forgotEmail}`);
       setIsSendingOtp(false);
       setFrontMode('verify_otp');
     } catch (err) {
@@ -530,9 +534,20 @@ export default function LoginPage() {
 
                 {/* Live OTP Email / Demo Callout */}
                 {dispatchedOtp ? (
-                  <div className="otp-callout-box">
-                    <span>Demo Mode Verification Code:</span>
-                    <div className="otp-badge-code">{dispatchedOtp}</div>
+                  <div className="otp-callout-box" style={{ background: otpEmailError ? '#fffbeb' : '#eef2ff', borderColor: otpEmailError ? '#f59e0b' : '#6366f1' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
+                      <span style={{ fontWeight: 600, color: otpEmailError ? '#b45309' : '#4338ca', fontSize: '11px', lineHeight: '1.4' }}>
+                        {otpEmailError 
+                          ? `Resend Free Sandbox (only sends to your Resend signup email). Fallback OTP Code:`
+                          : `Verification Code:`}
+                      </span>
+                      <div className="otp-badge-code">{dispatchedOtp}</div>
+                      {otpEmailError && (
+                        <span style={{ color: '#78350f', fontSize: '10px', marginTop: '2px' }}>
+                          Tip: Use your verified Resend email to receive real inbox deliveries.
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="otp-callout-box" style={{ background: '#f8fafc', borderColor: '#cbd5e1' }}>

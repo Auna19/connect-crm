@@ -43,17 +43,18 @@ export async function POST(request) {
       details: `Password reset OTP generated for ${user.email}. Email sent: ${emailResult.success}`
     });
 
-    const emailDelivered = emailResult.success;
+    const emailDelivered = Boolean(emailResult?.success);
     const isConfigured = isEmailConfigured();
 
     return NextResponse.json({
       success: true,
       message: emailDelivered
         ? `Verification code dispatched to ${user.email}. Check your inbox!`
-        : `Verification code generated.`,
+        : `Email delivery failed or restricted to verified domain. Fallback code provided.`,
       emailSent: emailDelivered,
-      // Only include fallback OTP on screen if RESEND_API_KEY is not yet configured
-      otp: !isConfigured ? otp : undefined,
+      emailError: emailDelivered ? null : emailResult?.error,
+      // Provide fallback OTP whenever email delivery didn't succeed OR if not configured
+      otp: (!emailDelivered || !isConfigured) ? otp : undefined,
       expiresAt,
       email: user.email
     });
