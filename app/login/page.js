@@ -427,6 +427,7 @@ export default function LoginPage() {
                       type="button"
                       onClick={() => {
                         setForgotError('');
+                        if (loginEmail) setForgotEmail(loginEmail);
                         setFrontMode('forgot');
                       }}
                       className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-transparent border-none p-0 cursor-pointer"
