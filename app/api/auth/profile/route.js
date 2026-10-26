@@ -9,9 +9,9 @@ export async function GET(request) {
 
     let user = null;
     if (id) {
-      user = getUserById(id);
+      user = await getUserById(id);
     } else if (email) {
-      user = getUserByEmail(email);
+      user = await getUserByEmail(email);
     }
 
     if (!user) {
@@ -43,7 +43,7 @@ export async function PUT(request) {
       );
     }
 
-    const user = getUserById(id);
+    const user = await getUserById(id);
     if (!user) {
       return NextResponse.json(
         { success: false, error: 'User not found.' },
@@ -67,7 +67,7 @@ export async function PUT(request) {
       updates.password = newPassword;
     }
 
-    const updated = updateUser(id, updates);
+    const updated = await updateUser(id, updates);
 
     logAuditEvent({
       userId: user.id,

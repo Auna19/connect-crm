@@ -13,7 +13,7 @@ export async function POST(request) {
       );
     }
 
-    const user = getUserByEmail(email);
+    const user = await getUserByEmail(email);
     if (!user) {
       return NextResponse.json(
         { success: false, error: 'User not found, please sign up.' },

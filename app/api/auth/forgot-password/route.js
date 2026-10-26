@@ -13,7 +13,7 @@ export async function POST(request) {
       );
     }
 
-    const user = getUserByEmail(email);
+    const user = await getUserByEmail(email);
     if (!user) {
       return NextResponse.json(
         { 
@@ -25,7 +25,7 @@ export async function POST(request) {
       );
     }
 
-    const { otp, expiresAt } = createPasswordReset(email);
+    const { otp, expiresAt } = await createPasswordReset(email);
 
     logAuditEvent({
       userId: user.id,

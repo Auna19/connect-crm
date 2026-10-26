@@ -20,7 +20,7 @@ export async function POST(request) {
       );
     }
 
-    const result = verifyAndResetPassword(email, otp, newPassword);
+    const result = await verifyAndResetPassword(email, otp, newPassword);
     if (!result.success) {
       return NextResponse.json(
         { success: false, error: result.error },

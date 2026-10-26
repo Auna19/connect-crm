@@ -14,7 +14,7 @@ export async function POST(request) {
     }
 
     try {
-      const newUser = createUser({
+      const newUser = await createUser({
         name,
         email,
         password,
