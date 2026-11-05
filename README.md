@@ -148,26 +148,31 @@ The interface has been verified across viewports and devices:
 
 ---
 
-## 🗄️ Permanent Cloud Database (100% Free - Neon Serverless Postgres)
+## 🗄️ Permanent Cloud Database (Supabase PostgreSQL)
 
-ConnectCRM features an **intelligent hybrid database layer** ([lib/db.js](file:///c:/Users/USER/Videos/DSN%20Automation/CRM/connect-crm/lib/db.js) and [lib/neon.js](file:///c:/Users/USER/Videos/DSN%20Automation/CRM/connect-crm/lib/neon.js)):
+ConnectCRM features an **intelligent hybrid database layer** ([lib/db.js](file:///c:/Users/USER/Videos/DSN%20Automation/CRM/connect-crm/lib/db.js) and [lib/supabase.js](file:///c:/Users/USER/Videos/DSN%20Automation/CRM/connect-crm/lib/supabase.js)):
 - **Local Development**: Works out-of-the-box with zero configuration using local `.data/db.json` persistence.
-- **Production on Vercel**: Connects automatically to **Neon Serverless PostgreSQL** whenever `DATABASE_URL` or `POSTGRES_URL` is set.
-- **Permanent Password & Account Retention**: Password changes, password resets (OTP), new signups, and profile edits are saved permanently in Neon PostgreSQL cloud storage and are **never lost** during Vercel redeployments or serverless cold starts.
+- **Production / Cloud on Supabase**: Connects automatically to **Supabase** via the official `@supabase/supabase-js` client (when `SUPABASE_URL` and `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` are set) or via direct/pooled PostgreSQL connection (when `DATABASE_URL` or `POSTGRES_URL` is set).
+- **Permanent Password & Account Retention**: Password changes, password resets (OTP), new signups, and profile edits are saved permanently in Supabase cloud storage and are **never lost** during Vercel redeployments or serverless cold starts.
+- **Automated Cloud Backup**: Full CRM datasets are mirrored to the `crm_store` table in Supabase.
 
-### Why Neon / Vercel Postgres?
-1. **100% Free Forever**: 0.5 GB free storage (hundreds of thousands of user accounts and passwords), plenty for production before revenue.
-2. **Zero Inactivity Pauses**: Unlike Supabase which pauses free projects after 7 days of inactivity, Neon wakes up in milliseconds without losing state.
-3. **HTTP Serverless Connection Pooling**: Uses `@neondatabase/serverless`, eliminating connection pool exhaustion on serverless functions.
-4. **Auto-Table Migration & Seeding**: Automatically creates `crm_users`, `crm_password_resets`, and `crm_store` tables and seeds default test accounts on first connection.
+### 2-Minute Supabase Setup:
 
-### 1-Click Setup on Vercel:
-1. Push your project to GitHub and deploy on [Vercel](https://vercel.com).
-2. In your Vercel Project Dashboard, navigate to the **Storage** tab.
-3. Click **Create Database** -> Select **Postgres (powered by Neon)**.
-4. Click **Connect to Project** and select your project (`connect-crm`).
-5. Vercel automatically populates `POSTGRES_URL` and `DATABASE_URL` in your project's Environment Variables.
-6. Trigger a redeploy (or deploy automatically via GitHub). Your CRM authentication and database are now permanently hosted in the cloud for free!
+1. **Create a Free Supabase Project**:
+   - Go to [supabase.com](https://supabase.com) and create a new project.
+2. **Run the Schema Migration**:
+   - In your Supabase Dashboard, open the **SQL Editor** from the left navigation.
+   - Click **New Query**, paste the contents of [`supabase-schema.sql`](file:///c:/Users/USER/Videos/DSN%20Automation/CRM/connect-crm/supabase-schema.sql), and click **Run**.
+   - This sets up `crm_users`, `crm_password_resets`, `crm_store`, and row-level security policies.
+3. **Add Environment Variables**:
+   - In Supabase, go to **Project Settings** -> **API**.
+   - Copy **Project URL** and **Project API Keys** (either `anon` public key or `service_role` secret key).
+   - In your local `.env.local` or your Vercel Dashboard (**Settings** -> **Environment Variables**), add:
+     - `NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co`
+     - `SUPABASE_URL=https://<your-project-ref>.supabase.co`
+     - `SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>` (or `SUPABASE_ANON_KEY=<your-anon-key>`)
+     - *(Optional)* `DATABASE_URL=postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres`
+4. Deploy or restart your application. ConnectCRM will now automatically route all persistence to Supabase!
 
 ---
 
@@ -192,7 +197,7 @@ ConnectCRM delivers password reset OTP verification codes directly to real user 
 
 ## 🔒 Security Architecture
 
-1. **AES-256-GCM Vault**: Credentials are encrypted before saving to `.data/db.json` or Neon PostgreSQL and decrypted only in temporary server memory during an authorized request.
+1. **AES-256-GCM Vault**: Credentials are encrypted before saving to `.data/db.json` or Supabase PostgreSQL and decrypted only in temporary server memory during an authorized request.
 2. **Secret Header Injection**: The configured `Secret Header Name` (e.g. `X-API-Key`) is added on the backend, preventing client exposure.
 3. **Log Sanitization**: Headers matching `authorization`, `secret`, `token`, `apiKey`, and `password` are recursively replaced with `[REDACTED]`.
 4. **Idempotency Control**: Critical operations support `x-idempotency-key` to suppress duplicate ticket or appointment generation.
